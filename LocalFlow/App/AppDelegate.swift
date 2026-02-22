@@ -231,7 +231,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Settings Window
 
-    private func openSettings() {
+    func openSettings() {
+        // En macOS 14+ buscar la ventana de Settings ya creada por SwiftUI
+        if let win = NSApp.windows.first(where: { $0.identifier?.rawValue.contains("Settings") == true }) {
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        // Fallback: usar el selector clásico (crea la ventana si no existe)
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         NSApp.activate(ignoringOtherApps: true)
     }
