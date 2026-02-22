@@ -6,6 +6,7 @@ enum AppStatus: Equatable {
     case idle
     case recording
     case transcribing
+    case cleaning
     case error(String)
 
     static func == (lhs: AppStatus, rhs: AppStatus) -> Bool {
@@ -15,6 +16,7 @@ enum AppStatus: Equatable {
         case (.idle, .idle): return true
         case (.recording, .recording): return true
         case (.transcribing, .transcribing): return true
+        case (.cleaning, .cleaning): return true
         case (.error(let a), .error(let b)): return a == b
         default: return false
         }

@@ -47,6 +47,31 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
             }
 
+            Section("Limpieza de texto con IA") {
+                Toggle("Activar limpieza automática", isOn: $settings.cleaningEnabled)
+
+                if settings.cleaningEnabled {
+                    OllamaStatusView(host: settings.ollamaHost)
+
+                    LabeledContent("Motor") { Text("Ollama (local)").foregroundStyle(.secondary) }
+
+                    HStack {
+                        Text("Modelo")
+                        Spacer()
+                        TextField("llama3.2:1b", text: $settings.ollamaModel)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 140)
+                    }
+
+                    Link("Instalar Ollama →", destination: URL(string: "https://ollama.com")!)
+                        .font(.caption)
+
+                    Text("Después de instalar Ollama, ejecuta en Terminal:\nollama pull \(settings.ollamaModel)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Inyección de texto") {
                 Toggle("Usar portapapeles (compatible con todas las apps)", isOn: $settings.useClipboardFallback)
                 Text("Activa esto si el texto no aparece en VS Code, Chrome u otras apps.")
@@ -69,7 +94,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 420)
+        .frame(width: 420, height: 560)
         .navigationTitle("LocalFlow")
     }
 }

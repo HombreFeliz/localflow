@@ -24,6 +24,8 @@ final class MenuBarController {
             symbolName = "waveform.circle.fill"
         case .transcribing:
             symbolName = "ellipsis.circle"
+        case .cleaning:
+            symbolName = "sparkles"
         case .downloadingModel:
             symbolName = "arrow.down.circle"
         case .error:
