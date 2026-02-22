@@ -23,13 +23,16 @@
 		94A574D432BA034C5B6708B5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 66AB2D30EB0E2E871340651C /* Assets.xcassets */; };
 		B3D5BA807F014583358F1BE3 /* RecordingOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E82576C4D4DF23AB74CA5E /* RecordingOverlayView.swift */; };
 		B6A839007C63A1B6C749C08B /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9310B7A4E0804C04E728C63B /* TranscriptionEngine.swift */; };
+		B822F28FAC2B60DCB9810582 /* OllamaStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CA2C6D997A244A467FD2C0 /* OllamaStatusView.swift */; };
 		BA32815676D405F24B10C82D /* ModelDownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E824B437A922ACCDC9FE148C /* ModelDownloadView.swift */; };
 		D725B7ECE33502F36EB74410 /* WaveformAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBF3FDF8D156F6B0337FBBFF /* WaveformAnalyzer.swift */; };
 		D72C90B11A29053755590480 /* GlobeKeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D60B0EF321A38D6ECE9531EB /* GlobeKeyMonitor.swift */; };
+		FEB8429EF9A58ACB70E285DE /* TextCleaningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA482BE6B1B41F1CCED3DCFE /* TextCleaningEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0EDE14F5E5643A0B2F46C3B5 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		14CA2C6D997A244A467FD2C0 /* OllamaStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaStatusView.swift; sourceTree = "<group>"; };
 		34D4F858F424353DDF136B24 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		4926CA88782E797391AA3917 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		4FF414F7018791CA53243DC4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -41,6 +44,7 @@
 		9310B7A4E0804C04E728C63B /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		A416720463827125453633DE /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		A7DE224E088ADB54CAC484FA /* LocalFlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFlowApp.swift; sourceTree = "<group>"; };
+		AA482BE6B1B41F1CCED3DCFE /* TextCleaningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextCleaningEngine.swift; sourceTree = "<group>"; };
 		B0795219D5237C46AB5F767F /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		BC29923947F4C175B4104605 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
 		C36BF7024C8497EF093EDC6B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -101,6 +105,7 @@
 				6989E037B356367FA620DE3C /* FloatingPanel.swift */,
 				B0795219D5237C46AB5F767F /* MenuBarController.swift */,
 				E824B437A922ACCDC9FE148C /* ModelDownloadView.swift */,
+				14CA2C6D997A244A467FD2C0 /* OllamaStatusView.swift */,
 				68E82576C4D4DF23AB74CA5E /* RecordingOverlayView.swift */,
 				4FF414F7018791CA53243DC4 /* SettingsView.swift */,
 			);
@@ -120,6 +125,7 @@
 			isa = PBXGroup;
 			children = (
 				0EDE14F5E5643A0B2F46C3B5 /* ModelManager.swift */,
+				AA482BE6B1B41F1CCED3DCFE /* TextCleaningEngine.swift */,
 				9310B7A4E0804C04E728C63B /* TranscriptionEngine.swift */,
 			);
 			path = Transcription;
@@ -255,9 +261,11 @@
 				6F3874FA5A7D7C15D3E0A47B /* MenuBarController.swift in Sources */,
 				BA32815676D405F24B10C82D /* ModelDownloadView.swift in Sources */,
 				592278AD27F33E81DA92C9D7 /* ModelManager.swift in Sources */,
+				B822F28FAC2B60DCB9810582 /* OllamaStatusView.swift in Sources */,
 				B3D5BA807F014583358F1BE3 /* RecordingOverlayView.swift in Sources */,
 				17861E006CD353E0723784E3 /* SettingsStore.swift in Sources */,
 				78336EA0F0762C0836EEB8EB /* SettingsView.swift in Sources */,
+				FEB8429EF9A58ACB70E285DE /* TextCleaningEngine.swift in Sources */,
 				84F311D1D6A3645093A1F30A /* TextInjector.swift in Sources */,
 				B6A839007C63A1B6C749C08B /* TranscriptionEngine.swift in Sources */,
 				D725B7ECE33502F36EB74410 /* WaveformAnalyzer.swift in Sources */,
