@@ -27,8 +27,9 @@ Mientras grabas, aparece un pequeño panel flotante con las ondas de audio en ti
 - **100% local** — usa [WhisperKit](https://github.com/argmaxinc/WhisperKit), optimizado para Apple Silicon
 - **Multiidioma** — español, inglés, catalán, francés, alemán, portugués, italiano, japonés, chino y más (detección automática)
 - **Dos modos de grabación** — mantener pulsado (push-to-talk) o alternar (pulsar una vez para empezar, otra para parar)
-- **Hotkey configurable** — Globe/Fn por defecto, o elige tu propio atajo
+- **Limpieza de texto con IA local** — elimina muletillas, repeticiones y añade puntuación usando Ollama (opcional)
 - **Vive en la barra de menú** — sin icono en el Dock, sin ventanas que estorben
+- **Todo configurable desde el menú** — idioma, modo de grabación y limpieza de texto sin abrir ninguna ventana
 - **Compatible con todas las apps** — inyección directa de texto, con opción de fallback por portapapeles para apps como VS Code, Chrome o Slack
 - **Sin cuenta, sin registro, sin internet** (tras la descarga inicial del modelo)
 
@@ -63,7 +64,7 @@ Haz clic en el botón verde **"Code"** de esta página → **"Download ZIP"**
 
 O si tienes git instalado:
 ```bash
-git clone https://github.com/TU_USUARIO/localflow.git
+git clone https://github.com/HombreFeliz/localflow.git
 ```
 
 ### Paso 3 — Abrir el proyecto
@@ -117,15 +118,68 @@ Para no tener que abrir Xcode cada vez:
 | Pulsar **Globe/Fn** | Empieza a grabar |
 | Pulsar **Globe/Fn** de nuevo | Para y transcribe |
 
-### Ajustes
+### El menú de la barra
 
-Haz clic derecho en el icono de la barra de menú → **Ajustes...**
+Haz clic en el icono de onda de sonido en la barra de menú para ver todas las opciones:
 
-Desde ahí puedes cambiar:
-- **Hotkey** — Globe/Fn o un atajo personalizado
-- **Modo** — mantener pulsado o alternar
-- **Idioma** — auto-detectar o fijar uno concreto
-- **Inyección de texto** — directo (por defecto) o via portapapeles (para VS Code, Chrome, Slack)
+```
+✓ Mejorar texto con IA       ← activa/desactiva la limpieza con Ollama
+  ● Ollama listo             ← verde si Ollama está corriendo
+  ○ Ollama no detectado...   ← rojo con enlace a instrucciones si no está
+
+─────────────────────────
+  Idioma              ▶   ✓ Detectar automáticamente / Español / English / ...
+  Modo de grabación   ▶   ✓ Mantener presionado / Alternar
+
+─────────────────────────
+  Salir de LocalFlow   ⌘Q
+```
+
+---
+
+## Limpieza de texto con IA (opcional)
+
+LocalFlow puede pasar el texto transcrito por un modelo de lenguaje local para eliminar muletillas, corregir puntuación y mejorar la redacción — todo sin conexión a internet.
+
+### ¿Qué mejora?
+
+- Elimina muletillas y rellenos ("o sea", "bueno", "pues", "eh", "a ver"...)
+- Quita repeticiones y tartamudeos
+- Añade puntuación y mayúsculas correctas
+- Corrige errores obvios de transcripción usando el contexto
+- Formatea automáticamente listas si el hablante enumera elementos
+
+### Configuración (una sola vez)
+
+**1. Instalar Ollama**
+
+Descarga e instala Ollama desde [ollama.com](https://ollama.com) — es una app gratuita, arrástrala a `/Applications`.
+
+**2. Descargar el modelo de IA**
+
+Abre Terminal y ejecuta:
+```bash
+ollama pull llama3.2:1b
+```
+
+Esto descarga el modelo Llama 3.2 1B (~1.3 GB). Solo se hace una vez.
+
+**3. Activar en LocalFlow**
+
+Haz clic en el icono de LocalFlow en la barra de menú → activa **"Mejorar texto con IA"**.
+
+Verás un indicador verde "● Ollama listo" cuando todo esté funcionando.
+
+### Degradación elegante
+
+| Situación | Comportamiento |
+|-----------|----------------|
+| Ollama activo y modelo descargado | Limpieza completa |
+| Ollama no está abierto | Texto sin limpiar (sin error, sin bloqueo) |
+| Tarda más de 10 segundos | Texto sin limpiar (sin espera) |
+| Limpieza desactivada | Comportamiento original |
+
+> 💡 Si ves "○ Ollama no detectado", asegúrate de que la app Ollama esté abierta. Puedes abrirla desde Finder o ejecutar `ollama serve` en Terminal.
 
 ---
 
@@ -136,20 +190,25 @@ Desde ahí puedes cambiar:
 | Safari, Mail, Notas, Pages | ✅ Directo |
 | Terminal, Xcode | ✅ Directo |
 | Microsoft Word, Excel | ✅ Directo |
-| VS Code, Chrome, Slack, Discord | ⚠️ Activar "Usar portapapeles" en Ajustes |
+| VS Code, Chrome, Slack, Discord | ⚠️ Activar "Usar portapapeles" en el menú |
+
+Para apps Electron (VS Code, Chrome, Slack): haz clic en el menú de LocalFlow → activa la opción de portapapeles si el texto no aparece directamente.
 
 ---
 
 ## Solución de problemas
 
 **El texto no aparece al transcribir**
-→ Asegúrate de que LocalFlow tiene permiso de Accesibilidad en Ajustes del Sistema → Privacidad y Seguridad → Accesibilidad
+→ Asegúrate de que LocalFlow tiene permiso de Accesibilidad: **Ajustes del Sistema → Privacidad y Seguridad → Accesibilidad**
 
 **En VS Code o Chrome el texto no se inserta**
-→ Abre Ajustes de LocalFlow y activa "Usar portapapeles (compatible con todas las apps)"
+→ Abre el menú de LocalFlow y activa "Usar portapapeles (compatible con todas las apps)"
 
 **La tecla Globe no funciona como hotkey**
-→ Ve a Ajustes → desactiva "Usar tecla Globe" → pon un atajo personalizado como `Ctrl+Espacio`
+→ Ve al menú de LocalFlow → Modo de grabación → prueba con un atajo personalizado como `Ctrl+Espacio`
+
+**"Ollama no detectado" aunque lo tengo instalado**
+→ Ollama debe estar abierto y corriendo. Ábrelo desde `/Applications/Ollama.app` o ejecuta `ollama serve` en Terminal. También verifica que hayas descargado el modelo con `ollama pull llama3.2:1b`.
 
 **El modelo tarda mucho en cargar la primera vez**
 → Normal — Whisper Medium son 1.5 GB. Con una buena conexión tarda unos minutos. Solo ocurre una vez.
@@ -163,6 +222,7 @@ Desde ahí puedes cambiar:
 
 - **[WhisperKit](https://github.com/argmaxinc/WhisperKit)** — Implementación de Whisper optimizada para Apple Silicon con Core ML y Neural Engine
 - **[KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)** — Gestión de atajos de teclado globales
+- **[Ollama](https://ollama.com)** — Motor de LLMs locales para la limpieza de texto (opcional)
 - **AVAudioEngine** — Captura de audio a 16kHz mono Float32
 - **CGEventTap** — Detección de la tecla Globe/Fn
 - **CGEvent.keyboardSetUnicodeString** — Inyección de texto sin pasar por el portapapeles

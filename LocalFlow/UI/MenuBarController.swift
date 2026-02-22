@@ -166,7 +166,7 @@ final class MenuBarController {
         }
 
         ollamaStatusItem?.isHidden = false
-        ollamaStatusItem?.title = "   ○ Comprobando Ollama..."
+        ollamaStatusItem?.attributedTitle = makeStatusTitle("   ○ Comprobando Ollama...", color: .secondaryLabelColor)
         checkOllamaAsync()
     }
 
@@ -179,11 +179,11 @@ final class MenuBarController {
             guard !Task.isCancelled else { return }
 
             if available {
-                ollamaStatusItem?.title = "   ● Ollama listo"
+                ollamaStatusItem?.attributedTitle = makeStatusTitle("   ● Ollama listo", color: .systemGreen)
                 ollamaStatusItem?.action = nil
                 ollamaStatusItem?.isEnabled = false
             } else {
-                ollamaStatusItem?.title = "   ○ Ollama no detectado — Ver instrucciones"
+                ollamaStatusItem?.attributedTitle = makeStatusTitle("   ○ Ollama no detectado — Ver instrucciones", color: .systemRed)
                 ollamaStatusItem?.action = #selector(openOllamaHelp)
                 ollamaStatusItem?.target = self
                 ollamaStatusItem?.isEnabled = true
@@ -200,6 +200,13 @@ final class MenuBarController {
         let isHold = settingsStore?.recordingMode == "holdToTalk"
         modeMenu.items[0].state = isHold ? .on : .off
         modeMenu.items[1].state = isHold ? .off : .on
+    }
+
+    private func makeStatusTitle(_ text: String, color: NSColor) -> NSAttributedString {
+        NSAttributedString(string: text, attributes: [
+            .foregroundColor: color,
+            .font: NSFont.menuFont(ofSize: 13)
+        ])
     }
 
     private func makeIcon(_ name: String) -> NSImage? {
