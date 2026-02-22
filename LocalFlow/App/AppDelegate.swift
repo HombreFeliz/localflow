@@ -22,9 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         floatingPanel = FloatingPanel(appState: appState)
 
-        menuBarController.setup { [weak self] in
-            self?.openSettings()
-        }
+        menuBarController.setup(settingsStore: settingsStore)
 
         wireAudioToWaveform()
         wireHotKeys()
@@ -229,18 +227,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Settings Window
-
-    func openSettings() {
-        // En macOS 14+ buscar la ventana de Settings ya creada por SwiftUI
-        if let win = NSApp.windows.first(where: { $0.identifier?.rawValue.contains("Settings") == true }) {
-            win.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-        // Fallback: usar el selector clásico (crea la ventana si no existe)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
 }
 
