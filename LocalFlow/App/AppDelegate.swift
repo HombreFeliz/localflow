@@ -8,7 +8,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let audioRecorder = AudioRecorder()
     private let transcriptionEngine = TranscriptionEngine()
-    private let textCleaner = TextCleaningEngine()
     let modelManager = ModelManager()
     private let hotKeyManager = HotKeyManager()
     private let textInjector = TextInjector()
@@ -174,42 +173,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let language = settingsStore.language
         let useClipboard = settingsStore.useClipboardFallback
-        let cleaningEnabled = settingsStore.cleaningEnabled
-        let ollamaModel = settingsStore.ollamaModel
-        let ollamaHost = settingsStore.ollamaHost
 
         Task {
             do {
-                let rawText = try await transcriptionEngine.transcribe(
+                let text = try await transcriptionEngine.transcribe(
                     audioSamples: samples,
                     language: language
                 )
 
-                var finalText = rawText
-
-                if !rawText.isEmpty && cleaningEnabled {
-                    await MainActor.run {
-                        appState.status = .cleaning
-                        self.menuBarController.updateIcon(for: .cleaning)
-                    }
-                    finalText = await textCleaner.clean(
-                        text: rawText,
-                        language: language,
-                        model: ollamaModel,
-                        host: ollamaHost
-                    )
-                }
-
                 await MainActor.run {
-                    appState.lastTranscription = finalText
+                    appState.lastTranscription = text
                     appState.status = .idle
                     self.floatingPanel?.hide()
                     self.menuBarController.updateIcon(for: .idle)
                 }
 
-                if !finalText.isEmpty {
+                if !text.isEmpty {
                     try? await Task.sleep(nanoseconds: 80_000_000)
-                    textInjector.inject(text: finalText, useClipboard: useClipboard)
+                    textInjector.inject(text: text, useClipboard: useClipboard)
                 }
             } catch {
                 await MainActor.run {

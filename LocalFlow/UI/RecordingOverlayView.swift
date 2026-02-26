@@ -18,16 +18,6 @@ struct RecordingOverlayView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
-            } else if case .cleaning = appState.status {
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.orange)
-                        .symbolEffect(.pulse)
-                    Text("Puliendo texto...")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
             } else {
                 HStack(spacing: 3) {
                     ForEach(Array(appState.waveformAmplitudes.enumerated()), id: \.offset) { index, amp in

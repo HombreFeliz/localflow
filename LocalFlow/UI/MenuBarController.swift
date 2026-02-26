@@ -4,9 +4,6 @@ import AppKit
 final class MenuBarController {
     private var statusItem: NSStatusItem?
     private var settingsStore: SettingsStore?
-    private var cleaningItem: NSMenuItem?
-    private var ollamaStatusItem: NSMenuItem?
-    private var ollamaTask: Task<Void, Never>?
 
     func setup(settingsStore: SettingsStore) {
         self.settingsStore = settingsStore
@@ -25,7 +22,6 @@ final class MenuBarController {
         switch status {
         case .recording:        symbolName = "waveform.circle.fill"
         case .transcribing:     symbolName = "ellipsis.circle"
-        case .cleaning:         symbolName = "sparkles"
         case .downloadingModel: symbolName = "arrow.down.circle"
         case .error:            symbolName = "exclamationmark.circle"
         default:                symbolName = "waveform.and.mic"
@@ -33,35 +29,8 @@ final class MenuBarController {
         statusItem?.button?.image = makeIcon(symbolName)
     }
 
-    // Llamar cuando cambia cleaningEnabled desde fuera (para sincronizar el checkmark)
-    func refreshCleaningState() {
-        cleaningItem?.state = (settingsStore?.cleaningEnabled == true) ? .on : .off
-        updateOllamaStatus()
-    }
-
     private func buildMenu() {
         let menu = NSMenu()
-        menu.delegate = self as? NSMenuDelegate
-
-        // — Sección Mejora de texto —
-        let cleaningItem = NSMenuItem(
-            title: "Mejorar texto con IA",
-            action: #selector(toggleCleaning),
-            keyEquivalent: ""
-        )
-        cleaningItem.target = self
-        cleaningItem.state = (settingsStore?.cleaningEnabled == true) ? .on : .off
-        menu.addItem(cleaningItem)
-        self.cleaningItem = cleaningItem
-
-        // Estado de Ollama (solo visible si cleaning está activado)
-        let ollamaItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        ollamaItem.isEnabled = false
-        menu.addItem(ollamaItem)
-        self.ollamaStatusItem = ollamaItem
-        updateOllamaStatus()
-
-        menu.addItem(.separator())
 
         // — Idioma —
         let languageMenu = NSMenu()
@@ -119,22 +88,9 @@ final class MenuBarController {
 
     // MARK: - Acciones
 
-    @objc private func toggleCleaning() {
-        guard let store = settingsStore else { return }
-        store.cleaningEnabled.toggle()
-        cleaningItem?.state = store.cleaningEnabled ? .on : .off
-        updateOllamaStatus()
-
-        // Si se acaba de activar, verificar Ollama en background
-        if store.cleaningEnabled {
-            checkOllamaAsync()
-        }
-    }
-
     @objc private func setLanguage(_ sender: NSMenuItem) {
         guard let lang = sender.representedObject as? String else { return }
         settingsStore?.language = lang
-        // Actualizar checkmarks del submenú
         sender.menu?.items.forEach { $0.state = ($0.representedObject as? String == lang) ? .on : .off }
         NotificationCenter.default.post(name: .settingsChanged, object: nil)
     }
@@ -151,46 +107,6 @@ final class MenuBarController {
         NotificationCenter.default.post(name: .settingsChanged, object: nil)
     }
 
-    @objc private func openOllamaHelp() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/HombreFeliz/localflow#limpieza-de-texto-con-ollama")!)
-    }
-
-    // MARK: - Ollama status
-
-    private func updateOllamaStatus() {
-        guard let store = settingsStore else { return }
-
-        if !store.cleaningEnabled {
-            ollamaStatusItem?.isHidden = true
-            return
-        }
-
-        ollamaStatusItem?.isHidden = false
-        ollamaStatusItem?.attributedTitle = makeStatusTitle("   ○ Comprobando Ollama...", color: .secondaryLabelColor)
-        checkOllamaAsync()
-    }
-
-    private func checkOllamaAsync() {
-        guard let store = settingsStore else { return }
-        ollamaTask?.cancel()
-        ollamaTask = Task { @MainActor in
-            let engine = TextCleaningEngine()
-            let available = await engine.isOllamaAvailable(host: store.ollamaHost)
-            guard !Task.isCancelled else { return }
-
-            if available {
-                ollamaStatusItem?.attributedTitle = makeStatusTitle("   ● Ollama listo", color: .systemGreen)
-                ollamaStatusItem?.action = nil
-                ollamaStatusItem?.isEnabled = false
-            } else {
-                ollamaStatusItem?.attributedTitle = makeStatusTitle("   ○ Ollama no detectado — Ver instrucciones", color: .systemRed)
-                ollamaStatusItem?.action = #selector(openOllamaHelp)
-                ollamaStatusItem?.target = self
-                ollamaStatusItem?.isEnabled = true
-            }
-        }
-    }
-
     // MARK: - Helpers
 
     private func rebuildModeMenu() {
@@ -200,13 +116,6 @@ final class MenuBarController {
         let isHold = settingsStore?.recordingMode == "holdToTalk"
         modeMenu.items[0].state = isHold ? .on : .off
         modeMenu.items[1].state = isHold ? .off : .on
-    }
-
-    private func makeStatusTitle(_ text: String, color: NSColor) -> NSAttributedString {
-        NSAttributedString(string: text, attributes: [
-            .foregroundColor: color,
-            .font: NSFont.menuFont(ofSize: 13)
-        ])
     }
 
     private func makeIcon(_ name: String) -> NSImage? {
