@@ -5,6 +5,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let appState = AppState()
     let settingsStore = SettingsStore()
+    let historyStore = HistoryStore()
 
     private let audioRecorder = AudioRecorder()
     private let transcriptionEngine = TranscriptionEngine()
@@ -15,13 +16,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var floatingPanel: FloatingPanel?
     private var downloadWindow: NSWindow?
+    private var mainWindowController: MainWindowController?
+    private var recordingStartTime: Date = .now
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        historyStore.load()
         floatingPanel = FloatingPanel(appState: appState)
 
-        menuBarController.setup(settingsStore: settingsStore)
+        menuBarController.setup(settingsStore: settingsStore) { [weak self] in
+            self?.openMainWindow()
+        }
 
         wireAudioToWaveform()
         wireHotKeys()
@@ -36,6 +42,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             await startupModelCheck()
         }
+    }
+
+    // MARK: - Main Window
+
+    func openMainWindow() {
+        if mainWindowController == nil {
+            mainWindowController = MainWindowController(historyStore: historyStore)
+        }
+        mainWindowController?.show()
     }
 
     // MARK: - Model Loading
@@ -144,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         do {
             try audioRecorder.startRecording()
+            recordingStartTime = .now
             appState.status = .recording
             appState.isRecording = true
             floatingPanel?.showCentered()
@@ -157,6 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard case .recording = appState.status else { return }
 
         let samples = audioRecorder.stopRecording()
+        let duration = Date.now.timeIntervalSince(recordingStartTime)
 
         let minSamples = Int(16_000 * 0.3)
         guard samples.count > minSamples else {
@@ -186,6 +203,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     appState.status = .idle
                     self.floatingPanel?.hide()
                     self.menuBarController.updateIcon(for: .idle)
+
+                    if !text.isEmpty {
+                        let record = TranscriptionRecord(
+                            text: text,
+                            durationSeconds: duration,
+                            language: language
+                        )
+                        self.historyStore.append(record)
+                    }
                 }
 
                 if !text.isEmpty {
@@ -207,6 +233,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-
 }
-

@@ -1,0 +1,58 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project LocalFlow.xcodeproj -scheme LocalFlow
+
+      - name: Build app
+        run: |
+          xcodebuild archive \
+            -project LocalFlow.xcodeproj \
+            -scheme LocalFlow \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/LocalFlow.xcarchive" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
+
+      - name: Extract .app
+        run: |
+          cp -R "$RUNNER_TEMP/LocalFlow.xcarchive/Products/Applications/LocalFlow.app" \
+            "$RUNNER_TEMP/LocalFlow.app"
+
+      - name: Remove quarantine & zip
+        run: |
+          xattr -cr "$RUNNER_TEMP/LocalFlow.app"
+          cd "$RUNNER_TEMP"
+          ditto -c -k --sequesterRsrc --keepParent LocalFlow.app LocalFlow.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ runner.temp }}/LocalFlow.zip
+          body: |
+            ## Instalación
+
+            1. Descarga `LocalFlow.zip` y descomprímelo
+            2. Mueve `LocalFlow.app` a tu carpeta `/Applications`
+            3. La primera vez: **clic derecho → Abrir → Abrir** (bypass de Gatekeeper)
+            4. La primera vez descargará el modelo Whisper Medium (~1.5 GB)
+
+            Requiere macOS 14 Sonoma o superior y Mac con Apple Silicon (M1 o posterior).

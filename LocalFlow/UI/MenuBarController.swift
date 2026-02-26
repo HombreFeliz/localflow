@@ -4,14 +4,20 @@ import AppKit
 final class MenuBarController {
     private var statusItem: NSStatusItem?
     private var settingsStore: SettingsStore?
+    private var openMainWindowCallback: (() -> Void)?
 
-    func setup(settingsStore: SettingsStore) {
+    func setup(settingsStore: SettingsStore, openMainWindow: @escaping () -> Void) {
         self.settingsStore = settingsStore
+        self.openMainWindowCallback = openMainWindow
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem?.button {
             button.image = makeIcon("waveform.and.mic")
             button.toolTip = "LocalFlow"
+            button.action = #selector(handleIconClick)
+            button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         buildMenu()
@@ -29,8 +35,29 @@ final class MenuBarController {
         statusItem?.button?.image = makeIcon(symbolName)
     }
 
+    @objc private func handleIconClick() {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp {
+            statusItem?.menu = buildMenuObject()
+            statusItem?.button?.performClick(nil)
+            statusItem?.menu = nil
+        } else {
+            openMainWindowCallback?()
+        }
+    }
+
     private func buildMenu() {
+        statusItem?.menu = nil  // click izquierdo abre ventana, no menú
+    }
+
+    private func buildMenuObject() -> NSMenu {
         let menu = NSMenu()
+
+        let openItem = NSMenuItem(title: "Abrir LocalFlow", action: #selector(openMainWindow), keyEquivalent: "")
+        openItem.target = self
+        menu.addItem(openItem)
+
+        menu.addItem(.separator())
 
         // — Idioma —
         let languageMenu = NSMenu()
@@ -83,10 +110,14 @@ final class MenuBarController {
         )
         menu.addItem(quitItem)
 
-        statusItem?.menu = menu
+        return menu
     }
 
     // MARK: - Acciones
+
+    @objc private func openMainWindow() {
+        openMainWindowCallback?()
+    }
 
     @objc private func setLanguage(_ sender: NSMenuItem) {
         guard let lang = sender.representedObject as? String else { return }
