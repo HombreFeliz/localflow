@@ -28,6 +28,7 @@ final class GlobeKeyMonitor {
 
         guard let tap = eventTap else {
             Unmanaged<GlobeKeyMonitor>.fromOpaque(selfPtr).release()
+            print("[GlobeKeyMonitor] ⚠️ Event tap creation failed — check Accessibility / Input Monitoring permissions")
             return
         }
 

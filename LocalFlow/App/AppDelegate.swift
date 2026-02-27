@@ -113,6 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 do {
                     try await transcriptionEngine.load(modelFolder: folder)
                     appState.status = .idle
+                    requestPermissions()
                     let snapshot = historyStore.records
                     Task.detached(priority: .background) { [weak self] in
                         guard let self else { return }
