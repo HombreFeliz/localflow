@@ -219,6 +219,28 @@
 		};
 /* End PBXGroup section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		FA1B2C3D4E5F60718293A4B5 /* Install to Applications */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Install to Applications";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Auto-install LocalFlow.app to /Applications after every build\nAPP_NAME=\"${PRODUCT_NAME}.app\"\nSRC=\"${BUILT_PRODUCTS_DIR}/${APP_NAME}\"\nDST=\"/Applications/${APP_NAME}\"\n\n# Kill any running instance\nkillall \"${PRODUCT_NAME}\" 2>/dev/null || true\nsleep 0.3\n\n# Copy (replaces previous version)\ncp -R \"${SRC}\" \"${DST}\"\necho \"✅ Installed ${APP_NAME} to /Applications\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXNativeTarget section */
 		F6E6C043EB0325F6A9544DE2 /* LocalFlow */ = {
 			isa = PBXNativeTarget;
@@ -227,6 +249,7 @@
 				948A7A4C93BFD0E8ED0F172E /* Sources */,
 				A68E172BC1358603EF46C4A3 /* Resources */,
 				0C6AB9416171EBC4B7A86F67 /* Frameworks */,
+				FA1B2C3D4E5F60718293A4B5 /* Install to Applications */,
 			);
 			buildRules = (
 			);
