@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 
@@ -10,7 +11,14 @@ final class GlobeKeyMonitor {
     private var isGlobeDown = false
 
     func start() {
-        guard eventTap == nil else { return }
+        guard eventTap == nil else {
+            print("[GlobeKeyMonitor] start() called but tap already exists — skipping")
+            return
+        }
+
+        let isTrusted = AXIsProcessTrusted()
+        let canListen = CGPreflightListenEventAccess()
+        print("[GlobeKeyMonitor] start() — AXTrusted=\(isTrusted) CGListenAccess=\(canListen)")
 
         // listenOnly — safer; system cannot disable it for being too slow
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
@@ -28,9 +36,10 @@ final class GlobeKeyMonitor {
 
         guard let tap = eventTap else {
             Unmanaged<GlobeKeyMonitor>.fromOpaque(selfPtr).release()
-            print("[GlobeKeyMonitor] ⚠️ Event tap creation failed — check Accessibility / Input Monitoring permissions")
+            print("[GlobeKeyMonitor] ⚠️ tapCreate FAILED — AXTrusted=\(isTrusted) CGListenAccess=\(canListen)")
             return
         }
+        print("[GlobeKeyMonitor] ✅ tapCreate succeeded")
 
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         if let src = runLoopSource {
@@ -54,9 +63,11 @@ final class GlobeKeyMonitor {
     fileprivate func handleFlagsChanged(isGlobeCurrentlyDown: Bool) {
         if isGlobeCurrentlyDown && !isGlobeDown {
             isGlobeDown = true
+            print("[GlobeKeyMonitor] Globe DOWN → calling onHoldStart")
             DispatchQueue.main.async { [weak self] in self?.onHoldStart?() }
         } else if !isGlobeCurrentlyDown && isGlobeDown {
             isGlobeDown = false
+            print("[GlobeKeyMonitor] Globe UP → calling onHoldEnd")
             DispatchQueue.main.async { [weak self] in self?.onHoldEnd?() }
         }
     }

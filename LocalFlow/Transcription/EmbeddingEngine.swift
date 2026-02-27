@@ -7,7 +7,14 @@ actor EmbeddingEngine {
     private var modelCache: [String: NLEmbedding] = [:]
 
     func embed(_ text: String, language: String) -> [Float]? {
-        let lang = NLLanguage(rawValue: language)
+        let lang: NLLanguage
+        if language == "auto" {
+            let recognizer = NLLanguageRecognizer()
+            recognizer.processString(text)
+            lang = recognizer.dominantLanguage ?? .english
+        } else {
+            lang = NLLanguage(rawValue: language)
+        }
         let model = loadedModel(for: lang) ?? loadedModel(for: .english)
         guard let model, let vector = model.vector(for: text) else { return nil }
         return vector.map { Float($0) }

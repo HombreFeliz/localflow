@@ -218,10 +218,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func wireHotKeys() {
         let useGlobe = settingsStore.hotKeyUsesGlobe
+        print("[AppDelegate] wireHotKeys — useGlobe=\(useGlobe), status=\(appState.status)")
         hotKeyManager.configure(useGlobe: useGlobe)
 
         hotKeyManager.onRecordingStart = { [weak self] in
-            DispatchQueue.main.async { self?.beginRecording() }
+            DispatchQueue.main.async {
+                print("[AppDelegate] onRecordingStart fired — status=\(self?.appState.status as Any)")
+                self?.beginRecording()
+            }
         }
         hotKeyManager.onRecordingStop = { [weak self] in
             DispatchQueue.main.async { self?.endRecording() }
