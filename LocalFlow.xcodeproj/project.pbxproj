@@ -236,7 +236,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Auto-install LocalFlow.app to /Applications after every build\nAPP_NAME=\"${PRODUCT_NAME}.app\"\nSRC=\"${BUILT_PRODUCTS_DIR}/${APP_NAME}\"\nDST=\"/Applications/${APP_NAME}\"\n\n# Kill any running instance\nkillall \"${PRODUCT_NAME}\" 2>/dev/null || true\nsleep 0.3\n\n# Copy (replaces previous version)\ncp -R \"${SRC}\" \"${DST}\"\necho \"✅ Installed ${APP_NAME} to /Applications\"\n";
+			shellScript = "# Auto-install LocalFlow.app to /Applications after every build\nAPP_NAME=\"${PRODUCT_NAME}.app\"\nSRC=\"${BUILT_PRODUCTS_DIR}/${APP_NAME}\"\nDST=\"/Applications/${APP_NAME}\"\n\n# Kill any running instance\nkillall \"${PRODUCT_NAME}\" 2>/dev/null || true\nsleep 0.3\n\n# Remove old version first, then copy (avoids nested .app bug with cp -R)\nrm -rf \"${DST}\"\ncp -R \"${SRC}\" /Applications/\necho \"✅ Installed ${APP_NAME} to /Applications\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
