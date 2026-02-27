@@ -38,6 +38,12 @@ final class ChatViewModel {
             isLoading = false
         }
     }
+
+    func clearChat() {
+        messages = []
+        errorMessage = nil
+        Task { await engine.clearHistory() }
+    }
 }
 
 // MARK: - ChatView
@@ -101,6 +107,24 @@ struct ChatView: View {
             }
             .onChange(of: vm.messages.last?.content) { _, _ in
                 proxy.scrollTo("bottom", anchor: .bottom)
+            }
+            .overlay(alignment: .topTrailing) {
+                if !vm.messages.isEmpty {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            vm.clearChat()
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(7)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Nueva conversación")
+                    .padding(10)
+                }
             }
         }
     }

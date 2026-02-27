@@ -6,9 +6,14 @@ import FoundationModels
 
 actor LocalChatEngine {
     private let historyStore: HistoryStore
+    private var history: [(query: String, response: String)] = []
 
     init(historyStore: HistoryStore) {
         self.historyStore = historyStore
+    }
+
+    func clearHistory() {
+        history = []
     }
 
     func respond(to query: String) async throws -> String {
@@ -17,19 +22,24 @@ actor LocalChatEngine {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
             let prompt = buildPrompt(query: query, context: context)
-            return try await generateWithFoundationModels(prompt: prompt)
+            let response = try await generateWithFoundationModels(prompt: prompt)
+            history.append((query: query, response: response))
+            return response
         }
         #endif
 
-        return smartFallbackResponse(query: query, records: matchedRecords)
+        let response = smartFallbackResponse(query: query, records: matchedRecords)
+        history.append((query: query, response: response))
+        return response
     }
 
-    // MARK: - RAG retrieval
+    // MARK: - RAG retrieval with recency boost
 
     private func buildContext(for query: String) async -> (context: String, records: [TranscriptionRecord]) {
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(query)
         let lang = recognizer.dominantLanguage?.rawValue ?? "es"
+        let now = Date()
 
         guard let queryVec = await EmbeddingEngine.shared.embed(query, language: lang) else {
             let fallback = await topRecordsFallback()
@@ -46,7 +56,16 @@ actor LocalChatEngine {
                 let s = EmbeddingEngine.cosine(queryVec, chunkVec)
                 if s > best { best = s }
             }
-            if best > 0 { scored.append((record, best)) }
+            if best > 0 {
+                // Boost reciente: notas más nuevas puntúan más alto ante mismo coseno
+                let hoursAgo = now.timeIntervalSince(record.timestamp) / 3600
+                let recencyBonus: Float
+                if hoursAgo < 24        { recencyBonus = 0.30 }
+                else if hoursAgo < 168  { recencyBonus = 0.15 }  // 7 days
+                else if hoursAgo < 720  { recencyBonus = 0.05 }  // 30 days
+                else                    { recencyBonus = 0 }
+                scored.append((record, best * (1 + recencyBonus)))
+            }
         }
 
         let top = scored.sorted { $0.1 > $1.1 }.prefix(5).map(\.0)
@@ -68,9 +87,27 @@ actor LocalChatEngine {
         }.joined(separator: "\n---\n")
     }
 
+    // MARK: - Prompt with conversation history
+
     private func buildPrompt(query: String, context: String) -> String {
-        """
-        Eres un asistente personal con acceso a las notas de voz del usuario, transcritas localmente en su Mac.
+        var historySection = ""
+        if !history.isEmpty {
+            let recent = history.suffix(6)
+            let historyText = recent
+                .map { "Usuario: \($0.query)\nAsistente: \($0.response)" }
+                .joined(separator: "\n\n")
+            historySection = """
+
+
+            Historial de la conversación:
+            ---
+            \(historyText)
+            ---
+            """
+        }
+
+        return """
+        Eres un asistente personal con acceso a las notas de voz del usuario, transcritas localmente en su Mac.\(historySection)
 
         Transcripciones relevantes:
         ---
@@ -105,11 +142,11 @@ actor LocalChatEngine {
         let now = Date()
         let cal = Calendar.current
 
-        let isYesterday  = q.contains("ayer")
-        let isToday      = q.contains("hoy")
-        let isLastHour   = q.contains("última hora") || q.contains("hace poco") || q.contains("media hora")
-        let isThisWeek   = q.contains("esta semana") || q.contains("últimos días")
-        let isThisMonth  = q.contains("este mes")
+        let isYesterday = q.contains("ayer")
+        let isToday     = q.contains("hoy")
+        let isLastHour  = q.contains("última hora") || q.contains("hace poco") || q.contains("media hora")
+        let isThisWeek  = q.contains("esta semana") || q.contains("últimos días")
+        let isThisMonth = q.contains("este mes")
 
         var periodLabel: String?
         var filtered: [TranscriptionRecord] = []
@@ -153,6 +190,14 @@ actor LocalChatEngine {
             header = "Encontré \(n) nota\(n == 1 ? "" : "s") relacionada\(n == 1 ? "" : "s"):"
         }
 
+        // Include last exchange for continuity
+        var prefix = ""
+        if let last = history.last {
+            let prevQuery = String(last.query.prefix(70))
+            let ellipsis = last.query.count > 70 ? "…" : ""
+            prefix = "*Antes preguntaste: \"\(prevQuery)\(ellipsis)\"*\n\n"
+        }
+
         var lines = [header, ""]
         for record in useRecords.prefix(5) {
             let dateStr = record.timestamp.formatted(.dateTime.day().month(.abbreviated).hour().minute())
@@ -161,7 +206,7 @@ actor LocalChatEngine {
             let ellipsis = record.text.count > 160 ? "…" : ""
             lines.append("• **\(dateStr)** (\(dur))\n  \(preview)\(ellipsis)")
         }
-        return lines.joined(separator: "\n")
+        return prefix + lines.joined(separator: "\n")
     }
 
     private func formatDuration(_ seconds: Double) -> String {
