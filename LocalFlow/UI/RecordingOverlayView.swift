@@ -143,7 +143,7 @@ struct RecordingOverlayView: View {
     private func barHeight(_ amplitude: Float) -> CGFloat {
         let minH: CGFloat = 3
         let maxH: CGFloat = 34
-        return minH + CGFloat(amplitude) * (maxH - minH)
+        return minH + CGFloat(amplitude).squareRoot() * (maxH - minH)
     }
 
     private var barColor: Color { accentTextColor }

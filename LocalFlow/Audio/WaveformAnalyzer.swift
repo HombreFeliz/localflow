@@ -23,7 +23,7 @@ struct WaveformAnalyzer {
             } else {
                 let chunk = Array(buffer[start..<end])
                 let r = rms(of: chunk)
-                amplitudes.append(max(0.05, min(1.0, r * 4.0)))
+                amplitudes.append(max(0.05, min(1.0, r * 8.0)))
             }
         }
         return amplitudes
