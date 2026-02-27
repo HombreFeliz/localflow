@@ -6,7 +6,7 @@ final class FloatingPanel: NSPanel {
 
     init(appState: AppState) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 220, height: 64),
+            contentRect: NSRect(x: 0, y: 0, width: 160, height: 60),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .borderless],
             backing: .buffered,
             defer: false
@@ -17,7 +17,7 @@ final class FloatingPanel: NSPanel {
         hidesOnDeactivate = false
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false  // avoid shadow artifacts on transparent borderless panel
         isMovableByWindowBackground = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         titlebarAppearsTransparent = true
@@ -27,8 +27,13 @@ final class FloatingPanel: NSPanel {
             .environment(appState)
 
         let hosting = NSHostingView(rootView: AnyView(overlayView))
-        hosting.frame = contentView?.bounds ?? NSRect(x: 0, y: 0, width: 220, height: 64)
+        hosting.frame = contentView?.bounds ?? NSRect(x: 0, y: 0, width: 160, height: 60)
         hosting.autoresizingMask = [.width, .height]
+
+        // Make the hosting view fully transparent so only the SwiftUI capsule is visible
+        hosting.wantsLayer = true
+        hosting.layer?.backgroundColor = NSColor.clear.cgColor
+
         contentView = hosting
         self.hostingView = hosting
     }
@@ -39,7 +44,7 @@ final class FloatingPanel: NSPanel {
     func showCentered() {
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let screenFrame = screen.visibleFrame
-        let panelWidth = frame.width
+        let panelWidth: CGFloat = 160
 
         let x = screenFrame.midX - panelWidth / 2
         let y = screenFrame.minY + 80

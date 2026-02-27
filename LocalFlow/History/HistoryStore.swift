@@ -7,6 +7,18 @@ final class HistoryStore {
 
     private(set) var records: [TranscriptionRecord] = []
 
+    // MARK: - Semantic index (in-memory, not persisted)
+
+    private(set) var semanticIndex: [UUID: [[Float]]] = [:]
+
+    func updateSemanticIndex(_ index: [UUID: [[Float]]]) {
+        semanticIndex.merge(index) { _, new in new }
+    }
+
+    func addToSemanticIndex(id: UUID, vectors: [[Float]]) {
+        semanticIndex[id] = vectors
+    }
+
     // MARK: - Computed stats
 
     var totalWords: Int {

@@ -41,6 +41,14 @@ final class AudioRecorder {
         try engine.start()
     }
 
+    func pauseRecording() {
+        engine.pause()
+    }
+
+    func resumeRecording() throws {
+        try engine.start()
+    }
+
     func stopRecording() -> [Float] {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()

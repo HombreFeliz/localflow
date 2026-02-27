@@ -11,13 +11,19 @@ final class HotKeyManager {
 
     private let globeMonitor = GlobeKeyMonitor()
     private var useGlobe: Bool = true
-    private var isToggleMode: Bool = false
     private var isCurrentlyRecording = false
+    private var isHoldSession = false
 
-    func configure(useGlobe: Bool, isToggleMode: Bool) {
+    func configure(useGlobe: Bool) {
         self.useGlobe = useGlobe
-        self.isToggleMode = isToggleMode
         rebind()
+    }
+
+    /// Reset recording state — call this when the UI stops recording (not the hotkey),
+    /// so the next Globe press starts a new session instead of trying to stop one.
+    func resetState() {
+        isCurrentlyRecording = false
+        isHoldSession = false
     }
 
     private func rebind() {
@@ -33,61 +39,38 @@ final class HotKeyManager {
     }
 
     private func setupGlobeHandlers() {
-        if isToggleMode {
-            globeMonitor.onPress = { [weak self] in
-                guard let self else { return }
-                if isCurrentlyRecording {
-                    isCurrentlyRecording = false
-                    onRecordingStop?()
-                } else {
-                    isCurrentlyRecording = true
-                    onRecordingStart?()
-                }
-            }
-            globeMonitor.onRelease = nil
-        } else {
-            globeMonitor.onPress = { [weak self] in
-                guard let self else { return }
-                isCurrentlyRecording = true
-                onRecordingStart?()
-            }
-            globeMonitor.onRelease = { [weak self] in
-                guard let self, isCurrentlyRecording else { return }
-                isCurrentlyRecording = false
-                onRecordingStop?()
-            }
+        globeMonitor.onHoldStart = { [weak self] in
+            guard let self, !isCurrentlyRecording else { return }
+            isHoldSession = true
+            isCurrentlyRecording = true
+            onRecordingStart?()
+        }
+
+        globeMonitor.onHoldEnd = { [weak self] in
+            guard let self, isHoldSession else { return }
+            isHoldSession = false
+            isCurrentlyRecording = false
+            onRecordingStop?()
         }
     }
 
     private func setupKeyboardShortcutHandlers() {
-        if isToggleMode {
-            KeyboardShortcuts.onKeyDown(for: .dictate) { [weak self] in
-                guard let self else { return }
-                if isCurrentlyRecording {
-                    isCurrentlyRecording = false
-                    onRecordingStop?()
-                } else {
-                    isCurrentlyRecording = true
-                    onRecordingStart?()
-                }
-            }
-        } else {
-            KeyboardShortcuts.onKeyDown(for: .dictate) { [weak self] in
-                guard let self, !isCurrentlyRecording else { return }
-                isCurrentlyRecording = true
-                onRecordingStart?()
-            }
-            KeyboardShortcuts.onKeyUp(for: .dictate) { [weak self] in
-                guard let self, isCurrentlyRecording else { return }
-                isCurrentlyRecording = false
-                onRecordingStop?()
-            }
+        KeyboardShortcuts.onKeyDown(for: .dictate) { [weak self] in
+            guard let self, !isCurrentlyRecording else { return }
+            isCurrentlyRecording = true
+            onRecordingStart?()
+        }
+        KeyboardShortcuts.onKeyUp(for: .dictate) { [weak self] in
+            guard let self, isCurrentlyRecording else { return }
+            isCurrentlyRecording = false
+            onRecordingStop?()
         }
     }
 
     func forceStop() {
         if isCurrentlyRecording {
             isCurrentlyRecording = false
+            isHoldSession = false
             onRecordingStop?()
         }
     }

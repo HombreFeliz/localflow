@@ -2,17 +2,19 @@ import CoreGraphics
 import Foundation
 
 final class GlobeKeyMonitor {
-    var onPress: (() -> Void)?
-    var onRelease: (() -> Void)?
+    var onHoldStart: (() -> Void)?   // Globe pressed — hold-to-talk begins
+    var onHoldEnd: (() -> Void)?     // Globe released — hold-to-talk ends
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private var isCurrentlyDown = false
+    private var isGlobeDown = false
 
     func start() {
         guard eventTap == nil else { return }
 
+        // listenOnly — safer; system cannot disable it for being too slow
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
+
         let selfPtr = Unmanaged.passRetained(self).toOpaque()
 
         eventTap = CGEvent.tapCreate(
@@ -45,16 +47,16 @@ final class GlobeKeyMonitor {
         }
         eventTap = nil
         runLoopSource = nil
-        isCurrentlyDown = false
+        isGlobeDown = false
     }
 
-    fileprivate func handleFlagsChanged(isGlobeDown: Bool) {
-        if isGlobeDown && !isCurrentlyDown {
-            isCurrentlyDown = true
-            DispatchQueue.main.async { [weak self] in self?.onPress?() }
-        } else if !isGlobeDown && isCurrentlyDown {
-            isCurrentlyDown = false
-            DispatchQueue.main.async { [weak self] in self?.onRelease?() }
+    fileprivate func handleFlagsChanged(isGlobeCurrentlyDown: Bool) {
+        if isGlobeCurrentlyDown && !isGlobeDown {
+            isGlobeDown = true
+            DispatchQueue.main.async { [weak self] in self?.onHoldStart?() }
+        } else if !isGlobeCurrentlyDown && isGlobeDown {
+            isGlobeDown = false
+            DispatchQueue.main.async { [weak self] in self?.onHoldEnd?() }
         }
     }
 }
@@ -65,15 +67,17 @@ private func globeEventCallback(
     event: CGEvent,
     refcon: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
-    guard type == .flagsChanged,
-          event.getIntegerValueField(.keyboardEventKeycode) == 63,
-          let refcon = refcon else {
+    guard let refcon = refcon else {
         return Unmanaged.passRetained(event)
     }
 
     let monitor = Unmanaged<GlobeKeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
-    let isGlobeDown = event.flags.contains(.maskSecondaryFn)
-    monitor.handleFlagsChanged(isGlobeDown: isGlobeDown)
+
+    if type == .flagsChanged,
+       event.getIntegerValueField(.keyboardEventKeycode) == 63 {
+        let isGlobeDown = event.flags.contains(.maskSecondaryFn)
+        monitor.handleFlagsChanged(isGlobeCurrentlyDown: isGlobeDown)
+    }
 
     return Unmanaged.passRetained(event)
 }

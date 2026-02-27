@@ -1,5 +1,4 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct SettingsView: View {
     @EnvironmentObject var settings: SettingsStore
@@ -7,29 +6,6 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Atajo de teclado") {
-                Toggle("Usar tecla Globe (Fn)", isOn: $settings.hotKeyUsesGlobe)
-                    .onChange(of: settings.hotKeyUsesGlobe) { _, _ in
-                        NotificationCenter.default.post(
-                            name: .settingsChanged, object: nil
-                        )
-                    }
-
-                if !settings.hotKeyUsesGlobe {
-                    KeyboardShortcuts.Recorder("Atajo personalizado:", name: .dictate)
-                }
-
-                Picker("Modo de grabación", selection: $settings.recordingMode) {
-                    Text("Mantener presionado").tag("holdToTalk")
-                    Text("Alternar (pulsar una vez)").tag("toggle")
-                }
-                .onChange(of: settings.recordingMode) { _, _ in
-                    NotificationCenter.default.post(
-                        name: .settingsChanged, object: nil
-                    )
-                }
-            }
-
             Section("Transcripción") {
                 Picker("Idioma", selection: $settings.language) {
                     Text("Detectar automáticamente").tag("auto")
@@ -69,7 +45,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 420)
+        .frame(width: 420, height: 300)
         .navigationTitle("LocalFlow")
     }
 }

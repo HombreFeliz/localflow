@@ -2,14 +2,67 @@ import SwiftUI
 
 struct MainView: View {
     let historyStore: HistoryStore
-    @State private var expandedID: UUID? = nil
+    let settingsStore: SettingsStore
+    let appState: AppState
+    @State private var selectedApp: String? = nil
+    @State private var showOnboardingHelp = false
+    @State private var showChat = false
 
     var body: some View {
+        Group {
+            if showChat {
+                ChatView(historyStore: historyStore)
+            } else {
+                historyContent
+            }
+        }
+        .frame(minWidth: 560, minHeight: 400)
+        .toolbar {
+            if appState.isEmbeddingInBackground {
+                ToolbarItem(placement: .automatic) {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .help("Indexando transcripciones...")
+                }
+            }
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { showChat.toggle() }
+                } label: {
+                    Image(systemName: showChat ? "clock" : "bubble.left.and.bubble.right")
+                }
+                .help(showChat ? "Ver historial" : "Chat con tus notas")
+            }
+            ToolbarItem(placement: .automatic) {
+                ColorPickerPopover()
+            }
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    showOnboardingHelp = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                }
+                .help("Ayuda")
+            }
+        }
+        .sheet(isPresented: $showOnboardingHelp) {
+            OnboardingView(settingsStore: settingsStore, onDismiss: { showOnboardingHelp = false })
+        }
+    }
+
+    // MARK: - History content
+
+    private var historyContent: some View {
         VStack(spacing: 0) {
             StatsBarView(historyStore: historyStore)
             Divider()
 
-            if historyStore.records.isEmpty {
+            if uniqueApps.count >= 2 {
+                AppFilterBar(apps: uniqueApps, selectedApp: $selectedApp)
+                Divider()
+            }
+
+            if filteredRecords.isEmpty {
                 emptyState
             } else {
                 ScrollView {
@@ -19,13 +72,12 @@ struct MainView: View {
                                 ForEach(group.records) { record in
                                     TranscriptionRowView(
                                         record: record,
-                                        isExpanded: expandedID == record.id,
-                                        onTap: {
+                                        onDelete: { historyStore.delete(id: record.id) },
+                                        onTapApp: { app in
                                             withAnimation(.easeInOut(duration: 0.15)) {
-                                                expandedID = expandedID == record.id ? nil : record.id
+                                                selectedApp = app
                                             }
-                                        },
-                                        onDelete: { historyStore.delete(id: record.id) }
+                                        }
                                     )
                                     Divider().padding(.leading, 56)
                                 }
@@ -46,26 +98,46 @@ struct MainView: View {
                 }
             }
         }
-        .frame(minWidth: 560, minHeight: 400)
     }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "waveform.and.mic")
+            Image(systemName: selectedApp != nil ? "line.3.horizontal.decrease.circle" : "waveform.and.mic")
                 .font(.system(size: 40))
                 .foregroundStyle(.tertiary)
-            Text("Sin transcripciones todavía")
+            Text(selectedApp != nil ? "Sin transcripciones en \(selectedApp!)" : "Sin transcripciones todavía")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-            Text("Mantén pulsada la tecla Globe y empieza a hablar.")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
+            if selectedApp != nil {
+                Button("Ver todas") {
+                    withAnimation(.easeInOut(duration: 0.15)) { selectedApp = nil }
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(Color.accentColor)
+            } else {
+                Text("Mantén pulsada la tecla Globe y empieza a hablar.")
+                    .font(.callout)
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Grouping
+    // MARK: - Filtering & Grouping
+
+    private var uniqueApps: [String] {
+        let apps = historyStore.records.compactMap(\.targetApp)
+        return Array(Set(apps)).sorted()
+    }
+
+    private var filteredRecords: [TranscriptionRecord] {
+        var records = historyStore.records
+        if let app = selectedApp {
+            records = records.filter { $0.targetApp == app }
+        }
+        return records
+    }
 
     private struct DayGroup {
         let key: String
@@ -77,7 +149,7 @@ struct MainView: View {
         let today = calendar.startOfDay(for: .now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
 
-        let grouped = Dictionary(grouping: historyStore.records) { record in
+        let grouped = Dictionary(grouping: filteredRecords) { record in
             calendar.startOfDay(for: record.timestamp)
         }
 
@@ -95,37 +167,125 @@ struct MainView: View {
     }
 }
 
+// MARK: - Filter Bar
+
+struct AppFilterBar: View {
+    let apps: [String]
+    @Binding var selectedApp: String?
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(label: "Todas", isSelected: selectedApp == nil) {
+                    withAnimation(.easeInOut(duration: 0.15)) { selectedApp = nil }
+                }
+                ForEach(apps, id: \.self) { app in
+                    FilterChip(label: app, isSelected: selectedApp == app) {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedApp = selectedApp == app ? nil : app
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+        }
+    }
+}
+
+struct FilterChip: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+    @AppStorage("com.localflow.accentColorName") private var accentColorName: String = "red"
+    private var accentColor: Color { AccentColorOption(rawValue: accentColorName)?.color ?? .red }
+    private var accentTextColor: Color { AccentColorOption(rawValue: accentColorName)?.textColor ?? .white }
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(isSelected ? accentColor : Color.primary.opacity(0.08))
+                .foregroundStyle(isSelected ? accentTextColor : .primary)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Color Picker Popover
+
+struct ColorPickerPopover: View {
+    @AppStorage("com.localflow.accentColorName") private var accentColorName: String = "red"
+    @State private var showPopover = false
+    private var current: Color { AccentColorOption(rawValue: accentColorName)?.color ?? .red }
+
+    var body: some View {
+        Button { showPopover = true } label: {
+            Circle().fill(current).frame(width: 14, height: 14)
+        }
+        .buttonStyle(.plain)
+        .help("Color de la interfaz")
+        .popover(isPresented: $showPopover) {
+            HStack(spacing: 10) {
+                ForEach(AccentColorOption.allCases) { option in
+                    Button { accentColorName = option.rawValue } label: {
+                        ZStack {
+                            Circle().fill(option.color).frame(width: 28, height: 28)
+                            if accentColorName == option.rawValue {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(option.textColor)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(12)
+        }
+    }
+}
+
 // MARK: - Row
 
 struct TranscriptionRowView: View {
     let record: TranscriptionRecord
-    let isExpanded: Bool
-    let onTap: () -> Void
     let onDelete: () -> Void
+    var onTapApp: ((String) -> Void)? = nil
 
     @State private var isHovering = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
-                // Hora
                 Text(record.timestamp.formatted(.dateTime.hour().minute()))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .frame(width: 44, alignment: .trailing)
 
-                // Texto
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(isExpanded ? record.text : record.text.truncated(to: 120))
+                    Text(record.text)
                         .font(.system(size: 13))
                         .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
-                        .animation(.none, value: isExpanded)
 
                     HStack(spacing: 6) {
                         Text("\(record.wordCount) palabras")
                         Text("·")
                         Text(displayLanguage)
+                        if let app = record.targetApp {
+                            Text("·")
+                            Button {
+                                onTapApp?(app)
+                            } label: {
+                                Text(app)
+                                    .underline(isHovering)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
@@ -133,8 +293,7 @@ struct TranscriptionRowView: View {
 
                 Spacer()
 
-                // Acciones (visibles en hover o expandido)
-                if isHovering || isExpanded {
+                if isHovering {
                     HStack(spacing: 4) {
                         Button {
                             NSPasteboard.general.clearContents()
@@ -159,7 +318,6 @@ struct TranscriptionRowView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .contentShape(Rectangle())
-            .onTapGesture(perform: onTap)
             .onHover { isHovering = $0 }
             .background(isHovering ? Color.primary.opacity(0.04) : .clear)
         }
@@ -179,12 +337,5 @@ struct TranscriptionRowView: View {
         case "auto": return "Auto"
         default: return record.language
         }
-    }
-}
-
-private extension String {
-    func truncated(to length: Int) -> String {
-        guard count > length else { return self }
-        return String(prefix(length)) + "…"
     }
 }

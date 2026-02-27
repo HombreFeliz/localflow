@@ -16,7 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var floatingPanel: FloatingPanel?
     private var downloadWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
     private var mainWindowController: MainWindowController?
+    private var chatWindowController: ChatWindowController?
     private var recordingStartTime: Date = .now
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,12 +27,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         historyStore.load()
         floatingPanel = FloatingPanel(appState: appState)
 
-        menuBarController.setup(settingsStore: settingsStore) { [weak self] in
+        menuBarController.setup(settingsStore: settingsStore, openMainWindow: { [weak self] in
             self?.openMainWindow()
-        }
+        }, openChat: { [weak self] in
+            self?.openChatWindow()
+        })
 
         wireAudioToWaveform()
+        wireRecordingCallbacks()
         wireHotKeys()
+
+        if !settingsStore.hasSeenOnboarding {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                self?.showOnboardingWindow()
+            }
+        }
 
         NotificationCenter.default.addObserver(
             self,
@@ -48,9 +59,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func openMainWindow() {
         if mainWindowController == nil {
-            mainWindowController = MainWindowController(historyStore: historyStore)
+            mainWindowController = MainWindowController(
+                historyStore: historyStore,
+                settingsStore: settingsStore,
+                appState: appState
+            )
         }
         mainWindowController?.show()
+    }
+
+    func openChatWindow() {
+        if chatWindowController == nil {
+            chatWindowController = ChatWindowController(historyStore: historyStore)
+        }
+        chatWindowController?.show()
+    }
+
+    // MARK: - Onboarding
+
+    private func showOnboardingWindow() {
+        guard onboardingWindow == nil else { return }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 370),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "LocalFlow"
+        window.isReleasedWhenClosed = false
+        window.center()
+
+        let view = OnboardingView(settingsStore: settingsStore) { [weak window, weak self] in
+            window?.close()
+            self?.onboardingWindow = nil
+        }
+        window.contentViewController = NSHostingController(rootView: view)
+
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        onboardingWindow = window
     }
 
     // MARK: - Model Loading
@@ -58,26 +106,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func startupModelCheck() async {
         if settingsStore.modelDownloaded {
-            appState.status = .downloadingModel(progress: 0)
-            if let folder = modelManager.findLocalModel() {
+            // Model should already be on disk — use ensureModelReady() which handles
+            // path resolution reliably (avoids findLocalModel() path mismatches)
+            await modelManager.ensureModelReady()
+            if let folder = modelManager.modelFolder {
                 do {
                     try await transcriptionEngine.load(modelFolder: folder)
                     appState.status = .idle
+                    let snapshot = historyStore.records
+                    Task.detached(priority: .background) { [weak self] in
+                        guard let self else { return }
+                        await MainActor.run { self.appState.isEmbeddingInBackground = true }
+                        var index: [UUID: [[Float]]] = [:]
+                        for record in snapshot {
+                            let chunks = EmbeddingEngine.chunkText(record.text)
+                            var chunkVecs: [[Float]] = []
+                            for chunk in chunks {
+                                if let vec = await EmbeddingEngine.shared.embed(chunk, language: record.language) {
+                                    chunkVecs.append(vec)
+                                }
+                            }
+                            if !chunkVecs.isEmpty { index[record.id] = chunkVecs }
+                        }
+                        let builtIndex = index
+                        await MainActor.run {
+                            self.historyStore.updateSemanticIndex(builtIndex)
+                            self.appState.isEmbeddingInBackground = false
+                        }
+                    }
+                    return
                 } catch {
-                    await triggerDownload()
+                    // Model file corrupted or incompatible — fall through to re-download
                 }
-            } else {
-                settingsStore.modelDownloaded = false
-                await triggerDownload()
             }
-        } else {
-            await triggerDownload()
+            settingsStore.modelDownloaded = false
         }
+        await triggerDownload()
     }
 
     @MainActor
     private func triggerDownload() async {
-        showDownloadWindow()
+        // Only show the download window if the model doesn't exist locally yet
+        if modelManager.findLocalModel() == nil { showDownloadWindow() }
         await modelManager.ensureModelReady()
 
         if let folder = modelManager.modelFolder {
@@ -135,10 +205,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func wireRecordingCallbacks() {
+        appState.onPauseRecording  = { [weak self] in self?.pauseRecording() }
+        appState.onResumeRecording = { [weak self] in self?.resumeRecording() }
+        appState.onStopRecording   = { [weak self] in
+            // Reset hotkey state so next Globe press starts a new session
+            self?.hotKeyManager.resetState()
+            self?.endRecording()
+        }
+    }
+
     private func wireHotKeys() {
         let useGlobe = settingsStore.hotKeyUsesGlobe
-        let isToggle = settingsStore.recordingMode == "toggle"
-        hotKeyManager.configure(useGlobe: useGlobe, isToggleMode: isToggle)
+        hotKeyManager.configure(useGlobe: useGlobe)
 
         hotKeyManager.onRecordingStart = { [weak self] in
             DispatchQueue.main.async { self?.beginRecording() }
@@ -169,8 +248,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func endRecording() {
+    private func pauseRecording() {
         guard case .recording = appState.status else { return }
+        audioRecorder.pauseRecording()
+        appState.status = .paused
+        menuBarController.updateIcon(for: .paused)
+    }
+
+    private func resumeRecording() {
+        guard case .paused = appState.status else { return }
+        do {
+            try audioRecorder.resumeRecording()
+            appState.status = .recording
+            menuBarController.updateIcon(for: .recording)
+        } catch {
+            appState.status = .error(error.localizedDescription)
+        }
+    }
+
+    private func endRecording() {
+        // Accept both .recording and .paused
+        switch appState.status {
+        case .recording, .paused: break
+        default: return
+        }
 
         let samples = audioRecorder.stopRecording()
         let duration = Date.now.timeIntervalSince(recordingStartTime)
@@ -184,12 +285,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        appState.transcriptionEstimatedDuration = max(duration / 6.0, 1.5)
         appState.status = .transcribing
         appState.isRecording = false
         menuBarController.updateIcon(for: .transcribing)
 
         let language = settingsStore.language
         let useClipboard = settingsStore.useClipboardFallback
+        let targetApp = NSWorkspace.shared.frontmostApplication?.localizedName
 
         Task {
             do {
@@ -208,9 +311,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         let record = TranscriptionRecord(
                             text: text,
                             durationSeconds: duration,
-                            language: language
+                            language: language,
+                            targetApp: targetApp
                         )
                         self.historyStore.append(record)
+                        let recId = record.id; let recText = text; let recLang = language
+                        Task.detached(priority: .background) { [weak self] in
+                            guard let self else { return }
+                            await MainActor.run { self.appState.isEmbeddingInBackground = true }
+                            let chunks = EmbeddingEngine.chunkText(recText)
+                            var chunkVecs: [[Float]] = []
+                            for chunk in chunks {
+                                if let vec = await EmbeddingEngine.shared.embed(chunk, language: recLang) {
+                                    chunkVecs.append(vec)
+                                }
+                            }
+                            let builtVecs = chunkVecs
+                            await MainActor.run {
+                                if !builtVecs.isEmpty {
+                                    self.historyStore.addToSemanticIndex(id: recId, vectors: builtVecs)
+                                }
+                                self.appState.isEmbeddingInBackground = false
+                            }
+                        }
                     }
                 }
 

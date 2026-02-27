@@ -5,10 +5,12 @@ final class MenuBarController {
     private var statusItem: NSStatusItem?
     private var settingsStore: SettingsStore?
     private var openMainWindowCallback: (() -> Void)?
+    private var openChatCallback: (() -> Void)?
 
-    func setup(settingsStore: SettingsStore, openMainWindow: @escaping () -> Void) {
+    func setup(settingsStore: SettingsStore, openMainWindow: @escaping () -> Void, openChat: @escaping () -> Void = {}) {
         self.settingsStore = settingsStore
         self.openMainWindowCallback = openMainWindow
+        self.openChatCallback = openChat
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
@@ -27,6 +29,7 @@ final class MenuBarController {
         let symbolName: String
         switch status {
         case .recording:        symbolName = "waveform.circle.fill"
+        case .paused:           symbolName = "pause.circle.fill"
         case .transcribing:     symbolName = "ellipsis.circle"
         case .downloadingModel: symbolName = "arrow.down.circle"
         case .error:            symbolName = "exclamationmark.circle"
@@ -102,6 +105,13 @@ final class MenuBarController {
 
         menu.addItem(.separator())
 
+        // — Chat —
+        let chatItem = NSMenuItem(title: "Abrir Chat", action: #selector(openChat), keyEquivalent: "")
+        chatItem.target = self
+        menu.addItem(chatItem)
+
+        menu.addItem(.separator())
+
         // — Salir —
         let quitItem = NSMenuItem(
             title: "Salir de LocalFlow",
@@ -117,6 +127,10 @@ final class MenuBarController {
 
     @objc private func openMainWindow() {
         openMainWindowCallback?()
+    }
+
+    @objc private func openChat() {
+        openChatCallback?()
     }
 
     @objc private func setLanguage(_ sender: NSMenuItem) {

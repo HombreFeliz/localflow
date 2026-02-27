@@ -4,13 +4,17 @@ import SwiftUI
 @MainActor
 final class MainWindowController: NSWindowController, NSWindowDelegate {
     private let historyStore: HistoryStore
+    private let settingsStore: SettingsStore
+    private let appState: AppState
 
-    init(historyStore: HistoryStore) {
+    init(historyStore: HistoryStore, settingsStore: SettingsStore, appState: AppState) {
         self.historyStore = historyStore
+        self.settingsStore = settingsStore
+        self.appState = appState
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 520),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .unifiedTitleAndToolbar],
             backing: .buffered,
             defer: false
         )
@@ -18,11 +22,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         window.minSize = NSSize(width: 560, height: 400)
         window.center()
         window.setFrameAutosaveName("LocalFlowMainWindow")
+        window.toolbarStyle = .unified
 
         super.init(window: window)
         window.delegate = self
 
-        let mainView = MainView(historyStore: historyStore)
+        let mainView = MainView(historyStore: historyStore, settingsStore: settingsStore, appState: appState)
         window.contentView = NSHostingView(rootView: mainView)
     }
 
