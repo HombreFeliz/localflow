@@ -36,6 +36,8 @@ final class AppState {
     var isRecording: Bool = false
     var transcriptionEstimatedDuration: Double = 0
     var isEmbeddingInBackground: Bool = false
+    var embeddedRecordCount: Int = 0
+    var totalRecordsToEmbed: Int = 0
 
     // Callbacks para que la UI pueda controlar la grabación sin conocer AppDelegate
     var onPauseRecording: (() -> Void)?

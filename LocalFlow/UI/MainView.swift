@@ -20,9 +20,15 @@ struct MainView: View {
         .toolbar {
             if appState.isEmbeddingInBackground {
                 ToolbarItem(placement: .automatic) {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .help("Indexando transcripciones...")
+                    HStack(spacing: 4) {
+                        ProgressView().scaleEffect(0.6)
+                        if appState.totalRecordsToEmbed > 0 {
+                            Text("\(appState.embeddedRecordCount)/\(appState.totalRecordsToEmbed)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .help("Indexando transcripciones para búsqueda semántica...")
                 }
             }
             ToolbarItem(placement: .automatic) {

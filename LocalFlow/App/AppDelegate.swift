@@ -117,7 +117,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     let snapshot = historyStore.records
                     Task.detached(priority: .background) { [weak self] in
                         guard let self else { return }
-                        await MainActor.run { self.appState.isEmbeddingInBackground = true }
+                        await MainActor.run {
+                            self.appState.isEmbeddingInBackground = true
+                            self.appState.embeddedRecordCount = 0
+                            self.appState.totalRecordsToEmbed = snapshot.count
+                        }
                         var index: [UUID: [[Float]]] = [:]
                         for record in snapshot {
                             let chunks = EmbeddingEngine.chunkText(record.text)
@@ -128,6 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                 }
                             }
                             if !chunkVecs.isEmpty { index[record.id] = chunkVecs }
+                            await MainActor.run { self.appState.embeddedRecordCount += 1 }
                         }
                         let builtIndex = index
                         await MainActor.run {
