@@ -44,6 +44,14 @@ struct MainView: View {
             }
             ToolbarItem(placement: .automatic) {
                 Button {
+                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                } label: {
+                    Image(systemName: "gear")
+                }
+                .help("Ajustes")
+            }
+            ToolbarItem(placement: .automatic) {
+                Button {
                     showOnboardingHelp = true
                 } label: {
                     Image(systemName: "questionmark.circle")

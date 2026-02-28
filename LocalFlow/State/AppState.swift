@@ -1,6 +1,6 @@
 import Foundation
 
-let appVersion = "v3.3"
+let appVersion = "v3.7"
 
 enum AppStatus: Equatable {
     case downloadingModel(progress: Double)

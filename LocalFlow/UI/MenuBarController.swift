@@ -110,6 +110,11 @@ final class MenuBarController {
         chatItem.target = self
         menu.addItem(chatItem)
 
+        // — Ajustes —
+        let settingsItem = NSMenuItem(title: "Ajustes...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
         menu.addItem(.separator())
 
         // — Salir —
@@ -131,6 +136,11 @@ final class MenuBarController {
 
     @objc private func openChat() {
         openChatCallback?()
+    }
+
+    @objc private func openSettings() {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func setLanguage(_ sender: NSMenuItem) {
