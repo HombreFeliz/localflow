@@ -7,6 +7,7 @@ struct MainView: View {
     @State private var selectedApp: String? = nil
     @State private var showOnboardingHelp = false
     @State private var showChat = false
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Group {
@@ -44,7 +45,7 @@ struct MainView: View {
             }
             ToolbarItem(placement: .automatic) {
                 Button {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    openSettings()
                 } label: {
                     Image(systemName: "gear")
                 }
