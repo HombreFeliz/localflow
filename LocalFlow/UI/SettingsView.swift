@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var settings: SettingsStore
     @ObservedObject var modelManager: ModelManager
+    @State private var newBundleID: String = ""
 
     var body: some View {
         Form {
@@ -30,6 +31,59 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Captura de texto (apps)") {
+                Toggle("Activar captura de texto de apps", isOn: $settings.enableAppCapture)
+                    .onChange(of: settings.enableAppCapture) { _, _ in
+                        NotificationCenter.default.post(name: .settingsChanged, object: nil)
+                    }
+
+                if settings.enableAppCapture {
+                    Text("Lee el contenido de apps monitorizadas para dar contexto completo al chat.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if !settings.monitoredBundleIDs.isEmpty {
+                        ForEach(settings.monitoredBundleIDs, id: \.self) { bundleID in
+                            HStack {
+                                Text(bundleID)
+                                    .font(.system(size: 12, design: .monospaced))
+                                Spacer()
+                                Button {
+                                    settings.monitoredBundleIDs.removeAll { $0 == bundleID }
+                                    NotificationCenter.default.post(name: .settingsChanged, object: nil)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                        .foregroundStyle(.red)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                    }
+
+                    HStack {
+                        TextField("com.example.app", text: $newBundleID)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 12, design: .monospaced))
+                        Button("Agregar") {
+                            let trimmed = newBundleID.trimmingCharacters(in: .whitespaces)
+                            guard !trimmed.isEmpty, !settings.monitoredBundleIDs.contains(trimmed) else { return }
+                            settings.monitoredBundleIDs.append(trimmed)
+                            newBundleID = ""
+                            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+                        }
+                        .disabled(newBundleID.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+
+                    if !settings.monitoredBundleIDs.contains("com.anthropic.claudefordesktop") {
+                        Button("Agregar Claude Desktop") {
+                            settings.monitoredBundleIDs.append("com.anthropic.claudefordesktop")
+                            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+                        }
+                        .font(.caption)
+                    }
+                }
+            }
+
             Section("Modelo") {
                 LabeledContent("Modelo", value: "Whisper Medium")
                 LabeledContent("Tamaño", value: "~1.5 GB")
@@ -45,7 +99,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 300)
+        .frame(width: 420, height: 460)
         .navigationTitle("LocalFlow")
     }
 }

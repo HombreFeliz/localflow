@@ -35,4 +35,13 @@ final class SettingsStore: ObservableObject {
     @AppStorage("com.localflow.accentColorName") var accentColorName: String = "red"
     var accentColor: Color { AccentColorOption(rawValue: accentColorName)?.color ?? .red }
     var accentTextColor: Color { AccentColorOption(rawValue: accentColorName)?.textColor ?? .white }
+
+    @AppStorage("com.localflow.enableAppCapture") var enableAppCapture: Bool = false
+    @AppStorage("com.localflow.monitoredBundleIDs") var monitoredBundleIDsRaw: String = ""
+    @AppStorage("com.localflow.capturePollingInterval") var capturePollingInterval: Double = 4.0
+
+    var monitoredBundleIDs: [String] {
+        get { monitoredBundleIDsRaw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+        set { monitoredBundleIDsRaw = newValue.joined(separator: ",") }
+    }
 }

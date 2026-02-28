@@ -83,7 +83,8 @@ actor LocalChatEngine {
         guard !records.isEmpty else { return "(sin transcripciones disponibles)" }
         return records.map { r in
             let date = r.timestamp.formatted(.dateTime.day().month().hour().minute())
-            return "[\(date)] \(r.text)"
+            let sourceLabel = r.source == .appCapture ? "[captura: \(r.targetApp ?? "app")]" : "[voz]"
+            return "[\(date)] \(sourceLabel) \(r.text)"
         }.joined(separator: "\n---\n")
     }
 

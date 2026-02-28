@@ -37,6 +37,7 @@
 		BB22CC33DD44EE55FF01AA11 /* LocalChatEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55DD44CC33BB22AA11FF01 /* LocalChatEngine.swift */; };
 		CC33DD44EE55FF01AA11BB22 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44CC33BB22AA11FF01EE55 /* ChatView.swift */; };
 		DD44EE55FF01AA11BB22CC33 /* ChatWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC33BB22AA11FF01EE55DD44 /* ChatWindowController.swift */; };
+		E2B3C4D5F6A7081929A3B4C5 /* AppTextCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F7081929A3B4 /* AppTextCaptureEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +71,7 @@
 		EE55DD44CC33BB22AA11FF01 /* LocalChatEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalChatEngine.swift; sourceTree = "<group>"; };
 		DD44CC33BB22AA11FF01EE55 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		CC33BB22AA11FF01EE55DD44 /* ChatWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWindowController.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F7081929A3B4 /* AppTextCaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTextCaptureEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +98,7 @@
 		3798483711A2EBB10A4F01FF /* LocalFlow */ = {
 			isa = PBXGroup;
 			children = (
+				D3C4E5F6A7B8091A2B3C4D5E /* Accessibility */,
 				BFE62025A4B729B8B4A6ED2E /* App */,
 				B6173D06BBC07D232AFD2ABB /* Audio */,
 				9CC9C73E5545E847D48CD8DC /* History */,
@@ -217,6 +220,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D3C4E5F6A7B8091A2B3C4D5E /* Accessibility */ = {
+			isa = PBXGroup;
+			children = (
+				F1A2B3C4D5E6F7081929A3B4 /* AppTextCaptureEngine.swift */,
+			);
+			path = Accessibility;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -317,6 +328,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E2B3C4D5F6A7081929A3B4C5 /* AppTextCaptureEngine.swift in Sources */,
 				2BF0D00DB0347C4BF1701729 /* AppDelegate.swift in Sources */,
 				D5C4B3A2918765F4E3D2C1B0 /* EmbeddingEngine.swift in Sources */,
 				710384136B264B9757F02B64 /* AppState.swift in Sources */,

@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let textInjector = TextInjector()
     private let menuBarController = MenuBarController()
 
+    private var textCaptureEngine: AppTextCaptureEngine?
     private var floatingPanel: FloatingPanel?
     private var downloadWindow: NSWindow?
     private var onboardingWindow: NSWindow?
@@ -114,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await transcriptionEngine.load(modelFolder: folder)
                     appState.status = .idle
                     requestPermissions()
+                    if settingsStore.enableAppCapture { startTextCapture() }
                     let snapshot = historyStore.records
                     Task.detached(priority: .background) { [weak self] in
                         guard let self else { return }
@@ -239,6 +241,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func onSettingsChanged() {
         wireHotKeys()
+        if settingsStore.enableAppCapture && textCaptureEngine == nil {
+            startTextCapture()
+        } else if !settingsStore.enableAppCapture {
+            textCaptureEngine?.stop()
+            textCaptureEngine = nil
+        }
+    }
+
+    // MARK: - Text Capture
+
+    private func startTextCapture() {
+        let engine = AppTextCaptureEngine(settingsStore: settingsStore)
+        textCaptureEngine = engine
+        engine.start { [weak self] text, appName in
+            guard let self else { return }
+            let record = TranscriptionRecord(
+                text: text, durationSeconds: 0, language: "auto",
+                targetApp: appName, source: .appCapture
+            )
+            self.historyStore.append(record)
+            self.embedAndIndex(id: record.id, text: text, language: "auto")
+        }
+    }
+
+    // MARK: - Embedding helper
+
+    private func embedAndIndex(id: UUID, text: String, language: String) {
+        Task.detached(priority: .background) { [weak self] in
+            guard let self else { return }
+            let chunks = EmbeddingEngine.chunkText(text)
+            var vecs: [[Float]] = []
+            for chunk in chunks {
+                if let v = await EmbeddingEngine.shared.embed(chunk, language: language) {
+                    vecs.append(v)
+                }
+            }
+            let builtVecs = vecs
+            await MainActor.run {
+                if !builtVecs.isEmpty {
+                    self.historyStore.addToSemanticIndex(id: id, vectors: builtVecs)
+                }
+            }
+        }
     }
 
     // MARK: - Recording State Machine
@@ -325,25 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             targetApp: targetApp
                         )
                         self.historyStore.append(record)
-                        let recId = record.id; let recText = text; let recLang = language
-                        Task.detached(priority: .background) { [weak self] in
-                            guard let self else { return }
-                            await MainActor.run { self.appState.isEmbeddingInBackground = true }
-                            let chunks = EmbeddingEngine.chunkText(recText)
-                            var chunkVecs: [[Float]] = []
-                            for chunk in chunks {
-                                if let vec = await EmbeddingEngine.shared.embed(chunk, language: recLang) {
-                                    chunkVecs.append(vec)
-                                }
-                            }
-                            let builtVecs = chunkVecs
-                            await MainActor.run {
-                                if !builtVecs.isEmpty {
-                                    self.historyStore.addToSemanticIndex(id: recId, vectors: builtVecs)
-                                }
-                                self.appState.isEmbeddingInBackground = false
-                            }
-                        }
+                        self.embedAndIndex(id: record.id, text: text, language: language)
                     }
                 }
 

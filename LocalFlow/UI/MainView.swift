@@ -279,6 +279,12 @@ struct TranscriptionRowView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 6) {
+                        if record.source == .appCapture {
+                            Image(systemName: "eye")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.blue)
+                            Text("·")
+                        }
                         Text("\(record.wordCount) palabras")
                         Text("·")
                         Text(displayLanguage)
